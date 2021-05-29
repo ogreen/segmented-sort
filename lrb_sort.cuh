@@ -40,8 +40,6 @@
 template <typename T>
 __global__ void binCountKernel(const T *offset, int32_t *bins, int N){
   int i = threadIdx.x + blockIdx.x *blockDim.x;
-  if(i>=N)
-    return;
 
   __shared__ int32_t localBins[33];
   int id = threadIdx.x;
@@ -50,10 +48,12 @@ __global__ void binCountKernel(const T *offset, int32_t *bins, int N){
   }
   __syncthreads();
 
-  int32_t adjSize=offset[i+1]-offset[i];
-  int myBin  = __clz(adjSize);
+  if(i<N){
+    int32_t adjSize=offset[i+1]-offset[i];
+    int myBin  = __clz(adjSize);
 
-  atomicAdd(localBins+myBin, 1);
+    atomicAdd(localBins+myBin, 1);
+  }
 
   __syncthreads();
   if(id<33){
@@ -82,8 +82,6 @@ __global__ void  rebinKernel(
   int N) {
 
     int i = threadIdx.x + blockIdx.x *blockDim.x;
-    if(i>=N)
-      return;
 
     __shared__ int32_t localBins[33];
     __shared__ int32_t localPos[33];
@@ -95,10 +93,15 @@ __global__ void  rebinKernel(
     }
     __syncthreads();
 
-    int32_t adjSize=offset[i+1]-offset[i];
-    int myBin  = __clz(adjSize);
+    int my_pos;
+    int myBin;
 
-    int my_pos = atomicAdd(localBins+myBin, 1);
+    if (i<N){
+      int32_t adjSize=offset[i+1]-offset[i];
+      myBin  = __clz(adjSize);
+
+      my_pos = atomicAdd(localBins+myBin, 1);
+    }
 
   __syncthreads();
     if(id<33){
@@ -106,12 +109,14 @@ __global__ void  rebinKernel(
     }
   __syncthreads();
 
-    int pos = localPos[myBin]+my_pos;
-    d_reOrg[pos]=i;
-    if(writeStart)
-      d_start[pos]=offset[i];
-    if(writeStop)
-      d_stop[pos] =offset[i+1];
+    if (i<N){
+      int pos = localPos[myBin]+my_pos;
+      d_reOrg[pos]=i;
+      if(writeStart)
+        d_start[pos]=offset[i];
+      if(writeStop)
+        d_stop[pos] =offset[i+1];
+    }
 }
 
 template <typename T>
