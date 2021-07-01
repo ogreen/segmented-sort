@@ -120,7 +120,7 @@ __global__ void  rebinKernel(
 }
 
 template <typename T>
-__device__ void bubbleSort(int32_t size, T *edges){
+__device__ void selectSort(int32_t size, T *edges){
   T temp; 
   for(int32_t i=0; i<(size-1); i++){
     int32_t min_idx=i;
@@ -155,13 +155,13 @@ __global__ void sortSmallKernel(const S *edges,
       return;
     }
 
-    int32_t temp1[32];
+    S temp1[32];
 
     for(int32_t d=0; d<adjSize;d++){
      temp1[d]=edges[offset[v]+d];
     }
 
-    bubbleSort(adjSize,temp1);
+    selectSort(adjSize,temp1);
 
     for(int32_t d=0; d<adjSize;d++){
      newEdges[offset[v]+d]=temp1[d];
